@@ -1,3 +1,6 @@
+from pathlib import Path
+
+
 class GSBackend:
     def _ensure_tables_exist(self):
 
@@ -5,28 +8,51 @@ class GSBackend:
             self.conn.execute(
                 f"""
                 CREATE TABLE IF NOT EXISTS {table} (
+                image_set   VARCHAR(32),
                 image_id    VARCHAR(32),
                 user        VARCHAR(32),
                 edge        INTEGER,
                 visgauss    INTEGER,
                 inside      INTEGER,
                 unreal      INTEGER,
-                PRIMARY KEY (image_id, user)
+                PRIMARY KEY (image_set, image_id, user)
                 )
             """
             )
 
         self.conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS images (image_id VARCHAR(32) PRIMARY KEY)
+            CREATE TABLE IF NOT EXISTS images (
+            image_set   VARCHAR(32),
+            image_id    VARCHAR(32),
+            PRIMARY KEY (image_set, image_id)
+            )
             """
         )
 
-    def __init__(self, db_path):
+        self.conn.commit()
+
+    def image_list(self):
+        dir = Path(self.images_path)
+        imgs = []
+        for child in dir.iterdir():
+            if child.is_dir():
+                img_set = child.stem
+                for img in child.iterdir():
+                    if img.is_file():
+                        imgs.append((str(img_set), str(img.name)))
+        return imgs
+
+    def __init__(self, db_path, images_path):
         import sqlite3
 
+        self.images_path = images_path
         self.conn = sqlite3.connect(db_path)
         self.cursor = self.conn.cursor()
+
+        self.imgs = self.image_list()
+        for x in self.imgs:
+            print(f"{x}")
 
     def new_annotation(self, image, label, user):
         # The annotation has the following structure:
