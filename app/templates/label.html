@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Label image{% endblock %}
 {% block body %}
-  <header></header>
-    <h1>Label image</h1></h1>
-    <div></div>
+  <header>
+    <h1>Label image</h1>
+    <div>
       <span class="muted">Signed in as {{ username }}</span>
       <form action="{{ url_for('logout') }}" method="post" style="display:inline">
         <button type="submit">Switch user</button>
@@ -11,7 +11,7 @@
     </div>
   </header>
 
-  <p></p>Check every issue that applies, then submit to get another image.</p>
+  <p>Check every issue that applies, then submit to get another image.</p>
   <figure style="margin: 1rem 0">
     <img
       src="{{ url_for('image_file', image_set=image[0], image_id=image[1]) }}"
@@ -25,7 +25,7 @@
     {% for name, description in labels %}
       <div style="margin:0.75rem 0">
         <label>
-          <</label>input type="checkbox" name="{{ name }}" value="1">
+          <input type="checkbox" name="{{ name }}" value="1">
           {{ description }}
         </label>
       </div>

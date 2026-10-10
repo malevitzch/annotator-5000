@@ -1,0 +1,25 @@
+services:
+  annotator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      ANNOTATOR_IMAGES: /app/images
+      ANNOTATOR_DB: /data/annotations.sqlite3
+      FLASK_SECRET_KEY: ${FLASK_SECRET_KEY:-local-development-only}
+    volumes:
+      - type: bind
+        source: ./images
+        target: /app/images
+        read_only: true
+        bind:
+          create_host_path: true
+      - type: volume
+        source: annotation-data
+        target: /data
+    restart: unless-stopped
+
+volumes:
+  annotation-data:
