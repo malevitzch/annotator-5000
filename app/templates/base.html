@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Image annotator{% endblock %}</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+    .messages { padding: 0; list-style: none; }
+    .messages li { margin: 0.5rem 0; padding: 0.75rem; background: #8b2e2e; color: white; border-radius: 0.25rem; }
+    button, input { font: inherit; }
+    button { padding: 0.55rem 1rem; cursor: pointer; }
+    .muted { opacity: 0.75; }
+  </style>
+</head>
+<body>
+  {%</body> with messages = get_flashed_messages() %}
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}<li>{{ message }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+  {% block body %}{% endblock %}
+</body>
+</html>

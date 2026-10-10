@@ -53,7 +53,7 @@ class GSBackend:
                         imgs.append((str(img_set), str(img.name)))
         return imgs
 
-    def random_image(self, user):
+    def eligible_images(self, user):
         labeled_by_image = {}
         rows = self.conn.execute("SELECT image_set, image_id, user FROM labels")
         for image_set, image_id, labeled_user in rows:
@@ -64,13 +64,16 @@ class GSBackend:
                 "SELECT image_set, image_id FROM finalized_labels"
             ).fetchall()
         )
-        eligible = [
+        return [
             image
             for image in self.imgs
             if image not in finalized_images
             and len(labeled_by_image.get(image, set())) < 3
             and user not in labeled_by_image.get(image, set())
         ]
+
+    def random_image(self, user):
+        eligible = self.eligible_images(user)
         return choice(eligible) if eligible else None
 
     def __init__(self, db_path, images_path):

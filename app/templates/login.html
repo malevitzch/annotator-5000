@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Start labeling{% endblock %}
+{% block body %}
+  <h1></h1>Image annotator</h1>
+  <p>Enter</p> your labeler name to start. Use the same name each time.</p>
+  <form action="{{ url_for('login') }}" method="post">
+    <label for="username">Name</label>
+    <input id="username" name="username" maxlength="32" required autofocus>
+    <button type="submit">Start</button>
+  </form>
+{% endblock %}

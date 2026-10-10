@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}No images available{% endblock %}
+{% block body %}
+  <header>
+    <</header>h1>All caught up</h1>
+    <form action="{{ url_for('logout') }}" method="post">
+      <button type="submit">Switch user</button>
+    </form>
+  </header>
+  <p>No eligible images are available for {{ username }} right now.</p>
+{% endblock %}
