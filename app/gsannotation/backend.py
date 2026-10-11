@@ -33,12 +33,31 @@ class GSBackend:
 
         self.conn.execute(
             """
-            CREATE TABLE IF NOT EXISTS users (
-            user        VARCHAR(32),
-            PRIMARY KEY (user)
+            CREATE TABLE IF NOT EXISTS schema_metadata (
+                key   TEXT PRIMARY KEY,
+                value TEXT NOT NULL
             )
             """
         )
+        users_schema = self.conn.execute(
+            "SELECT value FROM schema_metadata WHERE key = 'users_schema'"
+        ).fetchone()
+        if users_schema is None:
+            self.conn.execute("DROP TABLE IF EXISTS users")
+            self.conn.execute(
+                """
+                CREATE TABLE users (
+                    user          VARCHAR(32) PRIMARY KEY,
+                    password_hash TEXT NOT NULL,
+                    is_admin      INTEGER NOT NULL DEFAULT 0
+                )
+                """
+            )
+            self.conn.execute(
+                "INSERT INTO schema_metadata (key, value) VALUES ('users_schema', '1')"
+            )
+        elif users_schema[0] != "1":
+            raise RuntimeError(f"Unsupported users schema version: {users_schema[0]}")
 
         self.conn.commit()
 

@@ -13,4 +13,4 @@ ENV PYTHONUNBUFFERED=1
 
 EXPOSE 5000
 
-CMD ["flask", "--app", "app.app", "run", "--host=0.0.0.0", "--port=5000"]
+CMD ["flask", "--app", "app.app:create_app", "run", "--host=0.0.0.0", "--port=5000"]

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Manage accounts{% endblock %}
+{% block body %}
+  <header>
+    <div>
+      <h1>Manage accounts</h1>
+      <a href="{{ url_for('label_image') }}">Back to labeling</a>
+    </div>
+    <form action="{{ url_for('logout') }}" method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit">Sign out</button>
+    </form>
+  </header>
+
+  <h2>Create labeler account</h2>
+  <form action="{{ url_for('admin_accounts') }}" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <p>
+      <label for="username">Username</label><br>
+      <input id="username" name="username" maxlength="32" autocomplete="off" required>
+    </p>
+    <p>
+      <label for="password">Temporary password (at least 12 characters)</label><br>
+      <input id="password" name="password" type="password" minlength="12" autocomplete="new-password" required>
+    </p>
+    <button type="submit">Create account</button>
+  </form>
+
+  <h2>Accounts</h2>
+  <ul>
+    {% for username, is_admin in users %}
+      <li>{{ username }}{% if is_admin %} (admin){% endif %}</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

@@ -8,7 +8,9 @@ services:
     environment:
       ANNOTATOR_IMAGES: /app/images
       ANNOTATOR_DB: /data/annotations.sqlite3
-      FLASK_SECRET_KEY: ${FLASK_SECRET_KEY:-local-development-only}
+      FLASK_SECRET_KEY: ${FLASK_SECRET_KEY:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
     volumes:
       - type: bind
         source: ./images
@@ -16,10 +18,9 @@ services:
         read_only: true
         bind:
           create_host_path: true
-      - type: volume
-        source: annotation-data
+      - type: bind
+        source: ./data
         target: /data
+        bind:
+          create_host_path: true
     restart: unless-stopped
-
-volumes:
-  annotation-data:

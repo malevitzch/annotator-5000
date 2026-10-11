@@ -14,6 +14,8 @@ from flask import (
     session,
     url_for,
 )
+from flask_wtf.csrf import CSRFProtect
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.gsannotation.backend import GSBackend
 
@@ -29,7 +31,9 @@ LABELS = (
 def create_app(config=None):
     app = Flask(__name__)
     app.config.from_mapping(
-        SECRET_KEY=os.environ.get("FLASK_SECRET_KEY", "dev-only-change-me"),
+        SECRET_KEY=os.environ.get("FLASK_SECRET_KEY"),
+        ADMIN_USERNAME=os.environ.get("ADMIN_USERNAME", "admin"),
+        ADMIN_PASSWORD_HASH=os.environ.get("ADMIN_PASSWORD_HASH"),
         IMAGE_ROOT=os.environ.get("ANNOTATOR_IMAGES", str(ROOT_DIR / "images")),
         DATABASE_PATH=os.environ.get(
             "ANNOTATOR_DB", str(ROOT_DIR / "instance" / "annotations.sqlite3")
@@ -40,18 +44,50 @@ def create_app(config=None):
     if config:
         app.config.update(config)
 
+    if not app.config["SECRET_KEY"]:
+        raise RuntimeError("Set FLASK_SECRET_KEY in the environment or app config.")
+
+    admin_username = str(app.config["ADMIN_USERNAME"]).strip()
+    admin_password_hash = app.config["ADMIN_PASSWORD_HASH"]
+    if not admin_username or len(admin_username) > 32 or not admin_password_hash:
+        raise RuntimeError(
+            "Set ADMIN_USERNAME and ADMIN_PASSWORD_HASH before starting the app."
+        )
+    try:
+        check_password_hash(admin_password_hash, "validate-password-hash")
+    except (AttributeError, IndexError, TypeError, ValueError) as error:
+        raise RuntimeError(
+            "ADMIN_PASSWORD_HASH is not a valid Werkzeug hash."
+        ) from error
+    app.config["ADMIN_USERNAME"] = admin_username
+
+    CSRFProtect(app)
+
     def get_backend():
         if "backend" not in g:
             image_root = Path(app.config["IMAGE_ROOT"]).expanduser().resolve()
             if not image_root.is_dir():
-                raise RuntimeError(
-                    f"Image directory does not exist: {image_root}. "
-                    "Set ANNOTATOR_IMAGES to the directory containing image sets."
-                )
+                raise RuntimeError(f"Image directory does not exist: {image_root}.")
 
             database_path = Path(app.config["DATABASE_PATH"]).expanduser().resolve()
             database_path.parent.mkdir(parents=True, exist_ok=True)
-            g.backend = GSBackend(str(database_path), str(image_root))
+            backend = GSBackend(str(database_path), str(image_root))
+            backend.conn.execute(
+                "UPDATE users SET is_admin = 0 WHERE is_admin = 1 AND user <> ?",
+                (app.config["ADMIN_USERNAME"],),
+            )
+            backend.conn.execute(
+                """
+                INSERT INTO users (user, password_hash, is_admin)
+                VALUES (?, ?, 1)
+                ON CONFLICT(user) DO UPDATE SET
+                    password_hash = excluded.password_hash,
+                    is_admin = 1
+                """,
+                (app.config["ADMIN_USERNAME"], app.config["ADMIN_PASSWORD_HASH"]),
+            )
+            backend.conn.commit()
+            g.backend = backend
         return g.backend
 
     @app.teardown_appcontext
@@ -69,8 +105,20 @@ def create_app(config=None):
     @app.post("/login")
     def login():
         username = request.form.get("username", "").strip()
-        if not username or len(username) > 32:
-            flash("Enter a name between 1 and 32 characters.", "error")
+        password = request.form.get("password", "")
+        backend = get_backend()
+        account = backend.conn.execute(
+            "SELECT password_hash FROM users WHERE user = ?", (username,)
+        ).fetchone()
+        valid_password = False
+        if account:
+            try:
+                valid_password = check_password_hash(account[0], password)
+            except (AttributeError, IndexError, TypeError, ValueError):
+                valid_password = False
+
+        if not valid_password:
+            flash("Invalid username or password.", "error")
             return redirect(url_for("index"))
 
         session.clear()
@@ -82,6 +130,61 @@ def create_app(config=None):
         session.clear()
         return redirect(url_for("index"))
 
+    def require_admin():
+        username = session.get("username")
+        if not username:
+            return redirect(url_for("index"))
+
+        backend = get_backend()
+        account = backend.conn.execute(
+            "SELECT is_admin FROM users WHERE user = ?", (username,)
+        ).fetchone()
+        if not account:
+            session.clear()
+            return redirect(url_for("index"))
+        if not account[0]:
+            abort(403)
+        return None
+
+    @app.route("/admin/accounts", methods=["GET", "POST"])
+    def admin_accounts():
+        response = require_admin()
+        if response is not None:
+            return response
+
+        backend = get_backend()
+        if request.method == "POST":
+            username = request.form.get("username", "").strip()
+            password = request.form.get("password", "")
+            if not username or len(username) > 32:
+                flash("Usernames must be between 1 and 32 characters.", "error")
+            elif username == app.config["ADMIN_USERNAME"]:
+                flash(
+                    "That username is reserved for the configured administrator.",
+                    "error",
+                )
+            elif len(password) < 12:
+                flash("Passwords must be at least 12 characters long.", "error")
+            else:
+                existing = backend.conn.execute(
+                    "SELECT 1 FROM users WHERE user = ?", (username,)
+                ).fetchone()
+                if existing:
+                    flash("That username already exists.", "error")
+                else:
+                    backend.conn.execute(
+                        "INSERT INTO users (user, password_hash, is_admin) VALUES (?, ?, 0)",
+                        (username, generate_password_hash(password)),
+                    )
+                    backend.conn.commit()
+                    flash(f"Account created for {username}.", "success")
+            return redirect(url_for("admin_accounts"))
+
+        users = backend.conn.execute(
+            "SELECT user, is_admin FROM users ORDER BY user"
+        ).fetchall()
+        return render_template("admin_accounts.html", users=users)
+
     @app.get("/label")
     def label_image():
         username = session.get("username")
@@ -89,6 +192,13 @@ def create_app(config=None):
             return redirect(url_for("index"))
 
         backend = get_backend()
+        account = backend.conn.execute(
+            "SELECT is_admin FROM users WHERE user = ?", (username,)
+        ).fetchone()
+        if not account:
+            session.clear()
+            return redirect(url_for("index"))
+
         current_image = session.get("current_image")
         if current_image is not None:
             current_image = tuple(current_image)
@@ -101,7 +211,9 @@ def create_app(config=None):
 
         if current_image is None:
             session.pop("current_image", None)
-            return render_template("done.html", username=username)
+            return render_template(
+                "done.html", username=username, is_admin=bool(account[0])
+            )
 
         session["current_image"] = list(current_image)
         return render_template(
@@ -109,6 +221,7 @@ def create_app(config=None):
             username=username,
             image=current_image,
             labels=LABELS,
+            is_admin=bool(account[0]),
         )
 
     @app.post("/label")
@@ -151,6 +264,3 @@ def create_app(config=None):
         return send_from_directory(str(image_root / image_set), image_id)
 
     return app
-
-
-app = create_app()

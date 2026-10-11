@@ -1,11 +1,17 @@
 {% extends "base.html" %}
-{% block title %}Start labeling{% endblock %}
+{% block title %}Sign in{% endblock %}
 {% block body %}
   <h1>Image annotator</h1>
-  <p>Enter your labeler name to start. Use the same name each time.</p>
   <form action="{{ url_for('login') }}" method="post">
-    <label for="username">Name</label>
-    <input id="username" name="username" maxlength="32" required autofocus>
-    <button type="submit">Start</button>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <p>
+      <label for="username">Username</label><br>
+      <input id="username" name="username" maxlength="32" autocomplete="username" required autofocus>
+    </p>
+    <p>
+      <label for="password">Password</label><br>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+    </p>
+    <button type="submit">Sign in</button>
   </form>
 {% endblock %}
