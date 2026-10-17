@@ -28,8 +28,22 @@
 
   <h2>Accounts</h2>
   <ul>
-    {% for username, is_admin in users %}
-      <li>{{ username }}{% if is_admin %} (admin){% endif %}</li>
+    {% for username, is_admin, has_password in users %}
+      <li>
+        {{ username }}{% if is_admin %} (admin){% endif %}
+        {% if username == configured_admin %}
+          <span class="muted">Password managed by server configuration</span>
+        {% else %}
+          {% if not has_password %}<span class="muted">Password must be set</span>{% endif %}
+          <form action="{{ url_for('reset_account_password') }}" method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="username" value="{{ username }}">
+            <label for="password-{{ loop.index }}">Set/reset password</label>
+            <input id="password-{{ loop.index }}" name="password" type="password" minlength="12" autocomplete="new-password" required>
+            <button type="submit">Update password</button>
+          </form>
+        {% endif %}
+      </li>
     {% endfor %}
   </ul>
 {% endblock %}

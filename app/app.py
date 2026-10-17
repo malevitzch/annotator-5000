@@ -15,6 +15,7 @@ from flask import (
     url_for,
 )
 from flask_wtf.csrf import CSRFProtect
+from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app.gsannotation.backend import GSBackend
@@ -40,12 +41,16 @@ def create_app(config=None):
         ),
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
+        SESSION_COOKIE_SECURE=True,
+        MAX_CONTENT_LENGTH=16 * 1024,
     )
     if config:
         app.config.update(config)
 
     if not app.config["SECRET_KEY"]:
         raise RuntimeError("Set FLASK_SECRET_KEY in the environment or app config.")
+
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
     admin_username = str(app.config["ADMIN_USERNAME"]).strip()
     admin_password_hash = app.config["ADMIN_PASSWORD_HASH"]
@@ -95,6 +100,11 @@ def create_app(config=None):
         backend = g.pop("backend", None)
         if backend is not None:
             backend.conn.close()
+
+    @app.get("/healthz")
+    def healthcheck():
+        get_backend().conn.execute("SELECT 1").fetchone()
+        return {"status": "ok"}
 
     @app.get("/")
     def index():
@@ -181,9 +191,41 @@ def create_app(config=None):
             return redirect(url_for("admin_accounts"))
 
         users = backend.conn.execute(
-            "SELECT user, is_admin FROM users ORDER BY user"
+            "SELECT user, is_admin, password_hash IS NOT NULL FROM users ORDER BY user"
         ).fetchall()
-        return render_template("admin_accounts.html", users=users)
+        return render_template(
+            "admin_accounts.html",
+            users=users,
+            configured_admin=app.config["ADMIN_USERNAME"],
+        )
+
+    @app.post("/admin/accounts/password")
+    def reset_account_password():
+        response = require_admin()
+        if response is not None:
+            return response
+
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        if len(password) < 12:
+            flash("Passwords must be at least 12 characters long.", "error")
+        elif username == app.config["ADMIN_USERNAME"]:
+            flash(
+                "The configured administrator password is managed by the server.",
+                "error",
+            )
+        else:
+            backend = get_backend()
+            result = backend.conn.execute(
+                "UPDATE users SET password_hash = ? WHERE user = ?",
+                (generate_password_hash(password), username),
+            )
+            if result.rowcount:
+                backend.conn.commit()
+                flash(f"Password updated for {username}.", "success")
+            else:
+                flash("That account does not exist.", "error")
+        return redirect(url_for("admin_accounts"))
 
     @app.get("/label")
     def label_image():

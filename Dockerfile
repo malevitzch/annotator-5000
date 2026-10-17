@@ -1,16 +1,21 @@
-FROM python:3.15-rc-alpine
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    ANNOTATOR_IMAGES=/app/images \
+    ANNOTATOR_DB=/data/annotations.sqlite3
 
 WORKDIR /app
 
 COPY pyproject.toml README.md ./
 COPY app ./app
 
-RUN python -m pip install --no-cache-dir .
+RUN python -m pip install --no-cache-dir . \
+    && addgroup --system --gid 10001 annotator \
+    && adduser --system --uid 10001 --ingroup annotator --no-create-home annotator
 
-ENV ANNOTATOR_IMAGES=/app/images
-ENV ANNOTATOR_DB=/data/annotations.sqlite3
-ENV PYTHONUNBUFFERED=1
+USER 10001:10001
 
 EXPOSE 5000
 
-CMD ["flask", "--app", "app.app:create_app", "run", "--host=0.0.0.0", "--port=5000"]
+CMD ["gunicorn", "--workers", "2", "--threads", "2", "--bind", "0.0.0.0:5000", "--access-logfile", "-", "--error-logfile", "-", "app.app:create_app()"]

@@ -42,8 +42,13 @@ class GSBackend:
         users_schema = self.conn.execute(
             "SELECT value FROM schema_metadata WHERE key = 'users_schema'"
         ).fetchone()
-        if users_schema is None:
-            self.conn.execute("DROP TABLE IF EXISTS users")
+        if users_schema is not None and users_schema[0] != "1":
+            raise RuntimeError(f"Unsupported users schema version: {users_schema[0]}")
+
+        users_table = self.conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'users'"
+        ).fetchone()
+        if users_table is None:
             self.conn.execute(
                 """
                 CREATE TABLE users (
@@ -53,11 +58,21 @@ class GSBackend:
                 )
                 """
             )
+        else:
+            columns = {row[1] for row in self.conn.execute("PRAGMA table_info(users)")}
+            if "user" not in columns:
+                raise RuntimeError("Existing users table has no 'user' column.")
+            if "password_hash" not in columns:
+                self.conn.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
+            if "is_admin" not in columns:
+                self.conn.execute(
+                    "ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0"
+                )
+
+        if users_schema is None:
             self.conn.execute(
                 "INSERT INTO schema_metadata (key, value) VALUES ('users_schema', '1')"
             )
-        elif users_schema[0] != "1":
-            raise RuntimeError(f"Unsupported users schema version: {users_schema[0]}")
 
         self.conn.commit()
 
@@ -70,7 +85,21 @@ class GSBackend:
                 for img in child.iterdir():
                     if img.is_file():
                         imgs.append((str(img_set), str(img.name)))
-        return imgs
+        return sorted(imgs)
+
+    def discover_images(self):
+        available_images = self.image_list()
+        known_images = set(
+            self.conn.execute("SELECT image_set, image_id FROM images").fetchall()
+        )
+        new_images = [image for image in available_images if image not in known_images]
+        self.conn.executemany(
+            "INSERT OR IGNORE INTO images (image_set, image_id) VALUES (?, ?)",
+            new_images,
+        )
+        self.conn.commit()
+        self.imgs = available_images
+        return new_images
 
     def eligible_images(self, user):
         labeled_by_image = {}
@@ -99,11 +128,14 @@ class GSBackend:
         import sqlite3
 
         self.images_path = images_path
-        self.conn = sqlite3.connect(db_path)
+        self.conn = sqlite3.connect(db_path, timeout=30)
         self.cursor = self.conn.cursor()
         self._ensure_tables_exist()
 
-        self.imgs = self.image_list()
+        known_images = set(
+            self.conn.execute("SELECT image_set, image_id FROM images").fetchall()
+        )
+        self.imgs = [image for image in self.image_list() if image in known_images]
 
     def new_annotation(self, image, label, user):
         # The annotation has the following structure:
