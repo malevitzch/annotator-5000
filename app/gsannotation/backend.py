@@ -14,7 +14,7 @@ class GSBackend:
                 user        VARCHAR(32),
                 edge        INTEGER,
                 visgauss    INTEGER,
-                inside      INTEGER,
+                blur        INTEGER,
                 unreal      INTEGER,
                 PRIMARY KEY (image_set, image_id, user)
                 )
@@ -155,7 +155,7 @@ class GSBackend:
         # The annotation has the following structure:
         # - Edge of the world - does the photo capture the edge of the splat?
         # - Visible gaussians - does the image differ significantly from reality due to gaussians being too visible?
-        # - Inside - does the camera appear to be inside something (a blurry mess)
+        # - Blur - is there unrealistic blur visible in the image?
         # - Unreal - the image does not resemble a photo in any way (usually paired with "visible gaussians", but stronger)
         image_set, image_id = image
         data = (image_set, image_id, user, *[label[i] for i in range(4)])

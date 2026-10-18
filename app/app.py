@@ -24,8 +24,8 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 LABELS = (
     ("edge", "The image captures the edge of the splat."),
     ("visgauss", "Visible gaussians make the image differ significantly from reality."),
-    ("inside", "The camera appears to be inside something, creating a blurry mess."),
-    ("unreal", "The image does not resemble a photo in any way."),
+    ("blur", "Unrealistic blur appears on the image."),
+    ("unreal", "The image does not resemble a real photo in any way."),
 )
 
 

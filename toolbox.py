@@ -266,8 +266,8 @@ def export_csv(args):
         "connection = sqlite3.connect('file:/data/annotations.sqlite3?mode=ro', uri=True)\n"
         "output = io.StringIO(newline='')\n"
         "writer = csv.writer(output, lineterminator='\\n')\n"
-        "writer.writerow(['set', 'id', 'edge_fraction', 'visgauss_fraction', 'inside_fraction', 'unreal_fraction'])\n"
-        "writer.writerows(connection.execute('''SELECT image_set, image_id, AVG(edge), AVG(visgauss), AVG(inside), AVG(unreal) FROM finalized_labels GROUP BY image_set, image_id HAVING COUNT(DISTINCT user) = 3 ORDER BY image_set, image_id'''))\n"
+        "writer.writerow(['set', 'id', 'edge_fraction', 'visgauss_fraction', 'blur_fraction', 'unreal_fraction'])\n"
+        "writer.writerows(connection.execute('''SELECT image_set, image_id, AVG(edge), AVG(visgauss), AVG(blur), AVG(unreal) FROM finalized_labels GROUP BY image_set, image_id HAVING COUNT(DISTINCT user) = 3 ORDER BY image_set, image_id'''))\n"
         "print('TOOLBOX_CSV=' + base64.b64encode(output.getvalue().encode('utf-8')).decode('ascii'))\n"
         "connection.close()"
     )
