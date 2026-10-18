@@ -22,10 +22,10 @@ from app.gsannotation.backend import GSBackend
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 LABELS = (
-    ("edge", "The image captures the edge of the splat."),
-    ("visgauss", "Visible gaussians make the image differ significantly from reality."),
-    ("blur", "Unrealistic blur appears on the image."),
-    ("unreal", "The image does not resemble a real photo in any way."),
+    ("edge", "Edge of the splat"),
+    ("visgauss", "Visible gaussians"),
+    ("blur", "Unrealistic blur"),
+    ("unreal", "Doesn't resemble a photo in any way"),
 )
 
 
@@ -139,6 +139,23 @@ def create_app(config=None):
     def logout():
         session.clear()
         return redirect(url_for("index"))
+
+    @app.get("/tutorial")
+    def tutorial():
+        username = session.get("username")
+        if not username:
+            return redirect(url_for("index"))
+
+        account = (
+            get_backend()
+            .conn.execute("SELECT 1 FROM users WHERE user = ?", (username,))
+            .fetchone()
+        )
+        if not account:
+            session.clear()
+            return redirect(url_for("index"))
+
+        return render_template("tutorial.html", username=username)
 
     def require_admin():
         username = session.get("username")

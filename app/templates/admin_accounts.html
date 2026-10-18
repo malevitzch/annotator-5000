@@ -6,10 +6,13 @@
       <h1>Manage accounts</h1>
       <a href="{{ url_for('label_image') }}">Back to labeling</a>
     </div>
-    <form action="{{ url_for('logout') }}" method="post">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit">Sign out</button>
-    </form>
+    <div>
+      <a class="button-link" href="{{ url_for('tutorial') }}">Tutorial</a>
+      <form action="{{ url_for('logout') }}" method="post" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Sign out</button>
+      </form>
+    </div>
   </header>
   {% include "_progress.html" %}
 

@@ -3,39 +3,41 @@
 {% block title %}Label image{% endblock %}
 {% block body %}
 <main>
-    <header>
-      <div>
-        <h1>Label image</h1>
-        {% if is_admin %}<a href="{{ url_for('admin_accounts') }}">Manage accounts</a>{% endif %}
-      </div>
-      <div>
-        <span class="muted">Signed in as {{ username }}</span>
-        <form action="{{ url_for('logout') }}" method="post" style="display:inline">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button type="submit">Sign out</button>
-        </form>
-      </div>
-    </header>
+      <header>
+        <div>
+          <h1>Label image</h1>
+          {% if is_admin %}<a href="{{ url_for('admin_accounts') }}">Manage accounts</a>{% endif %}
+        </div>
+        <div>
+          <span class="muted">Signed in as {{ username }}</span>
+          <a class="button-link" href="{{ url_for('tutorial') }}">Tutorial</a>
+          <form action="{{ url_for('logout') }}" method="post" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit">Sign out</button>
+          </form>
+        </div>
+      </header>
     {% include "_progress.html" %}
     <p>Check every issue that applies, then submit to get another image.</p>
-    <p class="muted">Keyboard: 1-4 toggle issues; Enter submits.</p>
-    <form id="label-form" action="{{ url_for('submit_label') }}" method="post">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      {% for name, description in labels %}
-      <div style="margin:0.75rem 0">
-        <label for="issue-{{ loop.index }}">
-          <input id="issue-{{ loop.index }}" type="checkbox" name="{{ name }}" value="1" aria-keyshortcuts="{{ loop.index }}">
-          {{ description }}
-        </label>
-      </div>
-      {% endfor %}
-      <button type="submit" aria-keyshortcuts="Enter">Submit and continue</button>
-    </form>
-    <figure style="margin: 1rem 0">
-      <img src="{{ url_for('image_file', image_set=image[0], image_id=image[1]) }}" alt="Image to annotate" style="display:block; max-width:100%; max-height:70vh; object-fit:contain">
-      <figcaption class="muted">{{ image[0] }} / {{ image[1] }}</figcaption>
-    </figure>
-    <script>
+      <p class="muted">Keyboard: 1-4 toggle issues; Enter submits.</p>
+      <figure class="label-image">
+        <img src="{{ url_for('image_file', image_set=image[0], image_id=image[1]) }}" alt="Image to annotate">
+        <figcaption class="muted">{{ image[0] }} / {{ image[1] }}</figcaption>
+      </figure>
+      <form id="label-form" action="{{ url_for('submit_label') }}" method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% for name, description in labels %}
+        <div style="margin:0.5rem 0">
+          <label for="issue-{{ loop.index }}">
+            <input id="issue-{{ loop.index }}" type="checkbox" name="{{ name }}" value="1" aria-keyshortcuts="{{ loop.index }}">
+            {{ description }}
+          </label>
+        </div>
+        {% endfor %}
+        <button type="submit" aria-keyshortcuts="Enter">Submit and continue</button>
+      </form>
+</main>
+<script>
       const labelForm = document.getElementById("label-form");
       document.addEventListener("keydown", (event) => {
         if (event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
@@ -58,6 +60,5 @@
           }
         }
       });
-    </script>
-</main>
+</script>
 {% endblock %}

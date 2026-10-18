@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Tutorial{% endblock %}
+{% block body_class %}tutorial-page{% endblock %}
+{% block body %}
+<main>
+  <header>
+    <div>
+      <h1>Tutorial</h1>
+      <a href="{{ url_for('label_image') }}">Back to labeling</a>
+    </div>
+    <div>
+      <span class="muted">Signed in as {{ username }}</span>
+      <form action="{{ url_for('logout') }}" method="post" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Sign out</button>
+      </form>
+    </div>
+  </header>
+  <section>
+    <article>
+      <h1>Basics</h1>
+      <p>
+        Use keys 1-4 to select/unselect labels, press enter to submit.
+        The labels are as follows:
+        <ul>
+          <li>Edge of the splat - you can see edge of the scene and the void beyond it</li>
+          <li>Visible gaussians - single gaussians are visible too well, best seen on examples</li>
+          <li>Unrealistic blur - the image or a part of it is blurry (often due to a large gaussian)</li>
+          <li>Doesn't resemble a photo in any way - self-explanatory, you just don't know what you're even looking at</li>
+        </ul>
+        Below are examples of what labels should be given to which images.
+      </p>
+    </article>
+  </section>
+  <section class="tutorial-examples" aria-label="Tutorial examples">
+    <article class="tutorial-example">
+      <h2>Edge of the splat</h2>
+      <figure>
+        <img
+          src="{{ url_for('static', filename='examples/edge_of_splat.png') }}"
+          alt="A scene with empty space visible beyond its edge"
+        >
+        <figcaption>
+          This image is labeled as an edge of the splat because empty space is
+          clearly visible beyond the scene.
+        </figcaption>
+      </figure>
+    </article>
+    <article class="tutorial-example">
+      <h2>Edge of the splat with visible Gaussians</h2>
+      <figure>
+        <img
+          src="{{ url_for('static', filename='examples/gaussians_edge.png') }}"
+          alt="A scene with the edge of a splat and some visible Gaussians"
+        >
+        <figcaption>
+          We have the edge of the splat again, but also some visible, messy Gaussians.
+        </figcaption>
+      </figure>
+    </article>
+    <article class="tutorial-example">
+      <h2>Blurry, Gaussians, and Unreal</h2>
+      <figure>
+        <img
+          src="{{ url_for('static', filename='examples/blurry_gaussians_and_unreal.png') }}"
+          alt="A light blue mess"
+        >
+        <figcaption>
+          This image receives all labels besides the 'edge of the splat' as no edge hinting that we are
+          looking beyond the scene is visible. The blur is obvious, it doesn't resemble a real photo, and the
+          little specks are gaussians that are too visible.
+        </figcaption>
+      </figure>
+    </article>
+    <article class="tutorial-example">
+      <h2>Blurry Gaussians</h2>
+      <figure>
+        <img
+          src="{{ url_for('static', filename='examples/blurry_gaussians.png') }}"
+          alt="A distorted pool"
+        >
+        <figcaption>
+          This image has blur (obviously), but also visible Gaussians. In general, Gaussians work nicely together
+          to look like the original object (as seen in the Edge of the splat example), but when observed from weird
+          angles, they tend to fall apart.
+        </figcaption>
+      </figure>
+    </article>
+  </section>
+</main>
+{% endblock %}

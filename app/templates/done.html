@@ -6,10 +6,13 @@
       <h1>All caught up</h1>
       {% if is_admin %}<a href="{{ url_for('admin_accounts') }}">Manage accounts</a>{% endif %}
     </div>
-    <form action="{{ url_for('logout') }}" method="post">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <button type="submit">Sign out</button>
-    </form>
+    <div>
+      <a class="button-link" href="{{ url_for('tutorial') }}">Tutorial</a>
+      <form action="{{ url_for('logout') }}" method="post" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Sign out</button>
+      </form>
+    </div>
   </header>
   {% include "_progress.html" %}
   <p>No eligible images are available for {{ username }} right now.</p>
