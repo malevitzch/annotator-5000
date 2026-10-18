@@ -1,0 +1,12 @@
+<section class="progress-section" aria-label="Team annotation progress">
+  <div class="progress-heading">
+    <span>Team annotation progress</span>
+    <strong>{{ progress.completed }} / {{ progress.required }} labels</strong>
+  </div>
+  <progress
+    class="progress-bar"
+    value="{{ progress.completed }}"
+    max="{{ progress.required if progress.required else 1 }}"
+    aria-label="Team annotation progress: {{ progress.completed }} of {{ progress.required }} labels"
+  >{{ progress.completed }} / {{ progress.required }}</progress>
+</section>
