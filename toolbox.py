@@ -257,6 +257,12 @@ def run(_args):
     print("Services started. Check `docker compose ps` for status.")
 
 
+def reload(_args):
+    stop(_args)
+    build(_args)
+    run(_args)
+
+
 def export_csv(args):
     require_env_file()
     ensure_app_image()
@@ -349,6 +355,7 @@ def main():
     subparsers.add_parser("build", help="Build the application image")
     subparsers.add_parser("run", help="Discover images and start the services")
     subparsers.add_parser("stop", help="Gracefully stop the Compose services")
+    subparsers.add_parser("reload", help="Gracefully stop, rebuild, and restart")
     subparsers.add_parser("discover-images", help="Register images found under images/")
     export_parser = subparsers.add_parser(
         "export-csv", help="Export finalized annotation fractions as CSV"
@@ -370,6 +377,7 @@ def main():
         "build": build,
         "run": run,
         "stop": stop,
+        "reload": reload,
         "discover-images": discover_images,
         "export-csv": export_csv,
         "wipe-db": wipe_db,

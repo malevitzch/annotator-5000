@@ -66,6 +66,7 @@ Run these from the project root:
 python3 toolbox.py flask_secret
 python3 toolbox.py admin_pwd
 python3 toolbox.py stop
+python3 toolbox.py reload
 python3 toolbox.py discover-images
 python3 toolbox.py export-csv --output annotations.csv
 ```
@@ -109,8 +110,10 @@ yes votes produce approximately `0.6666666666666666`). Use
   Copy these backups off the VPS and periodically verify that they can be
   restored. Keep enough disk space for the image sets and backup files.
 - To deploy code updates, pull or transfer the updated source and run
-  `python3 toolbox.py build` followed by `python3 toolbox.py run`. Back up the
-  database before upgrades. `docker compose down` leaves the database and
+  `python3 toolbox.py build` followed by `python3 toolbox.py run`, or use
+  `python3 toolbox.py reload` to stop, rebuild, and restart in one command.
+  Reload causes downtime while the image is built. Back up the database before
+  upgrades. `docker compose down` leaves the database and
   named volumes in place; avoid `docker compose down -v` unless intentionally
   removing Caddy's stored data.
 - `python3 toolbox.py wipe-db` asks for an explicit `WIPE` confirmation, stops
