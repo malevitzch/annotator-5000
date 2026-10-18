@@ -29,6 +29,7 @@ services:
       - /tmp:size=16m,mode=1777
     init: true
     restart: unless-stopped
+    stop_grace_period: 45s
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -67,6 +68,7 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     restart: unless-stopped
+    stop_grace_period: 15s
     security_opt:
       - no-new-privileges:true
     logging:

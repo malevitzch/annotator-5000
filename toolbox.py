@@ -241,6 +241,12 @@ def build(_args):
     run_compose(["build"])
 
 
+def stop(_args):
+    require_env_file()
+    run_compose(["stop"])
+    print("Services stopped gracefully; database and volumes were retained.")
+
+
 def run(_args):
     require_env_file()
     ensure_app_image()
@@ -342,6 +348,7 @@ def main():
     subparsers.add_parser("flask_secret", help="Generate and save FLASK_SECRET_KEY")
     subparsers.add_parser("build", help="Build the application image")
     subparsers.add_parser("run", help="Discover images and start the services")
+    subparsers.add_parser("stop", help="Gracefully stop the Compose services")
     subparsers.add_parser("discover-images", help="Register images found under images/")
     export_parser = subparsers.add_parser(
         "export-csv", help="Export finalized annotation fractions as CSV"
@@ -362,6 +369,7 @@ def main():
         "flask_secret": flask_secret,
         "build": build,
         "run": run,
+        "stop": stop,
         "discover-images": discover_images,
         "export-csv": export_csv,
         "wipe-db": wipe_db,

@@ -65,6 +65,7 @@ Run these from the project root:
 ```sh
 python3 toolbox.py flask_secret
 python3 toolbox.py admin_pwd
+python3 toolbox.py stop
 python3 toolbox.py discover-images
 python3 toolbox.py export-csv --output annotations.csv
 ```
@@ -87,7 +88,9 @@ yes votes produce approximately `0.6666666666666666`). Use
   configuration data are in named Docker volumes.
 - The app runs as UID 10001, has a read-only container filesystem, and waits
   for SQLite locks for up to 30 seconds. Compose health-checks the app and
-  rotates container logs.
+  rotates container logs. `python3 toolbox.py stop` gracefully stops the app
+  and Caddy, retaining the database and volumes; run `python3 toolbox.py run`
+  to start them again.
 - SQLite is suitable for a small, single-instance deployment. Do not run
   multiple app replicas against this database. Consider a database server and
   shared image storage only if traffic or concurrency makes the single-VPS

@@ -18,4 +18,4 @@ USER 10001:10001
 
 EXPOSE 5000
 
-CMD ["gunicorn", "--workers", "2", "--threads", "2", "--bind", "0.0.0.0:5000", "--access-logfile", "-", "--error-logfile", "-", "app.app:create_app()"]
+CMD ["gunicorn", "--workers", "2", "--threads", "2", "--graceful-timeout", "30", "--bind", "0.0.0.0:5000", "--access-logfile", "-", "--error-logfile", "-", "app.app:create_app()"]
