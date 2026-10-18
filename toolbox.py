@@ -33,6 +33,47 @@ def run_compose(args, *, env=None, **kwargs):
     )
 
 
+def ensure_app_image(env=None):
+    image_check = subprocess.run(
+        ["docker", "image", "inspect", "annotator-5000:local"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if image_check.returncode != 0:
+        run_compose(["build", "annotator"], env=env)
+
+
+def ensure_mount_directories():
+    images_dir = ROOT / "images"
+    images_dir.mkdir(parents=True, exist_ok=True)
+
+    data_dir = ROOT / "data"
+    data_dir.mkdir(parents=True, exist_ok=True)
+    if data_dir.stat().st_uid != 10001:
+        subprocess.run(
+            [
+                "docker",
+                "run",
+                "--rm",
+                "--user",
+                "0:0",
+                "--volume",
+                f"{data_dir.resolve()}:/data",
+                "--entrypoint",
+                "chown",
+                "annotator-5000:local",
+                "-R",
+                "10001:10001",
+                "/data",
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+
+
 def generate_admin_hash(password):
     env = os.environ.copy()
     env["FLASK_SECRET_KEY"] = "toolbox-hash-only"
@@ -46,16 +87,7 @@ def generate_admin_hash(password):
         "password = sys.stdin.readline().rstrip('\\n'); "
         "print('ADMIN_HASH=' + generate_password_hash(password))"
     )
-    image_check = subprocess.run(
-        ["docker", "image", "inspect", "annotator-5000:local"],
-        cwd=ROOT,
-        env=env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if image_check.returncode != 0:
-        run_compose(["build", "annotator"], env=env)
+    ensure_app_image(env)
 
     result = subprocess.run(
         [
@@ -196,6 +228,8 @@ def discover_images_in_container():
 
 def discover_images(_args):
     require_env_file()
+    ensure_app_image()
+    ensure_mount_directories()
     new_images = discover_images_in_container()
     print(f"Discovered {len(new_images)} new image(s).")
     for image_set, image_id in new_images:
@@ -209,6 +243,8 @@ def build(_args):
 
 def run(_args):
     require_env_file()
+    ensure_app_image()
+    ensure_mount_directories()
     new_images = discover_images_in_container()
     print(f"Registered {len(new_images)} new image(s).")
     run_compose(["up", "-d"])
@@ -217,6 +253,8 @@ def run(_args):
 
 def export_csv(args):
     require_env_file()
+    ensure_app_image()
+    ensure_mount_directories()
     script = (
         "import base64, csv, io, sqlite3\n"
         "connection = sqlite3.connect('file:/data/annotations.sqlite3?mode=ro', uri=True)\n"

@@ -42,14 +42,9 @@ From the project root on the VPS:
    python3 toolbox.py admin_pwd
    ```
 
-3. Ensure the image directory is populated and make the persistent database
-   directory writable by the container's unprivileged UID:
-
-   ```sh
-   mkdir -p data
-   sudo chown -R 10001:10001 data
-   ```
-
+3. Ensure `images/` contains the image sets you want to annotate. The toolbox
+   creates missing `images/` and `data/` mount directories; it assigns the data
+   directory to the app's unprivileged UID when needed.
 4. Build and start the services:
 
    ```sh
