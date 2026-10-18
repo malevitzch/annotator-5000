@@ -197,6 +197,7 @@ def create_app(config=None):
             "admin_accounts.html",
             users=users,
             configured_admin=app.config["ADMIN_USERNAME"],
+            progress=backend.progress(),
         )
 
     @app.post("/admin/accounts/password")
@@ -241,6 +242,7 @@ def create_app(config=None):
             session.clear()
             return redirect(url_for("index"))
 
+        progress = backend.progress()
         current_image = session.get("current_image")
         if current_image is not None:
             current_image = tuple(current_image)
@@ -254,7 +256,10 @@ def create_app(config=None):
         if current_image is None:
             session.pop("current_image", None)
             return render_template(
-                "done.html", username=username, is_admin=bool(account[0])
+                "done.html",
+                username=username,
+                is_admin=bool(account[0]),
+                progress=progress,
             )
 
         session["current_image"] = list(current_image)
@@ -264,6 +269,7 @@ def create_app(config=None):
             image=current_image,
             labels=LABELS,
             is_admin=bool(account[0]),
+            progress=progress,
         )
 
     @app.post("/label")

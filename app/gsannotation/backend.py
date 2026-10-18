@@ -101,6 +101,20 @@ class GSBackend:
         self.imgs = available_images
         return new_images
 
+    def progress(self):
+        active_images = set(self.imgs)
+        completed = sum(
+            (image_set, image_id) in active_images
+            for image_set, image_id in self.conn.execute(
+                """
+                SELECT image_set, image_id FROM labels
+                UNION ALL
+                SELECT image_set, image_id FROM finalized_labels
+                """
+            )
+        )
+        return {"completed": completed, "required": len(active_images) * 3}
+
     def eligible_images(self, user):
         labeled_by_image = {}
         rows = self.conn.execute("SELECT image_set, image_id, user FROM labels")

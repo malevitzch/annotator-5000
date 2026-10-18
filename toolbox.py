@@ -46,23 +46,35 @@ def generate_admin_hash(password):
         "password = sys.stdin.readline().rstrip('\\n'); "
         "print('ADMIN_HASH=' + generate_password_hash(password))"
     )
-    result = run_compose(
+    image_check = subprocess.run(
+        ["docker", "image", "inspect", "annotator-5000:local"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if image_check.returncode != 0:
+        run_compose(["build", "annotator"], env=env)
+
+    result = subprocess.run(
         [
+            "docker",
             "run",
             "--rm",
-            "--no-deps",
-            "--build",
-            "-T",
+            "-i",
             "--entrypoint",
             "python",
-            "annotator",
+            "annotator-5000:local",
             "-c",
             script,
         ],
+        cwd=ROOT,
         env=env,
         input=password + "\n",
         text=True,
         capture_output=True,
+        check=True,
     )
     for line in result.stdout.splitlines():
         if line.startswith("ADMIN_HASH="):
@@ -101,6 +113,37 @@ def set_env_value(name, value):
         raise
 
 
+def restart_running_annotator():
+    env = os.environ.copy()
+    if not env.get("DOMAIN"):
+        env["DOMAIN"] = "localhost"
+    try:
+        result = subprocess.run(
+            [*COMPOSE, "ps", "--status", "running", "-q", "annotator"],
+            cwd=ROOT,
+            env=env,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as error:
+        diagnostic = error.stderr or error.stdout
+        print(
+            "Password hash saved, but the running app could not be checked. "
+            "Run `python3 toolbox.py run` to apply it.",
+            file=sys.stderr,
+        )
+        if diagnostic:
+            print(diagnostic, file=sys.stderr)
+        return
+
+    if result.stdout.strip():
+        run_compose(["up", "-d", "--no-deps", "annotator"], env=env)
+        print("Restarted the running app with the new administrator password.")
+    else:
+        print("Hash saved. Run `python3 toolbox.py run` to start the app.")
+
+
 def admin_pwd(_args):
     require_env_file()
     password = getpass.getpass("New administrator password (12+ characters): ")
@@ -113,6 +156,7 @@ def admin_pwd(_args):
     password_hash = generate_admin_hash(password)
     set_env_value("ADMIN_PASSWORD_HASH", password_hash)
     print("Updated ADMIN_PASSWORD_HASH in .env; plaintext was not saved.")
+    restart_running_annotator()
 
 
 def flask_secret(_args):

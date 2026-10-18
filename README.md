@@ -35,7 +35,8 @@ From the project root on the VPS:
    `ADMIN_USERNAME`. Restrict `.env` to the deployment user (`chmod 600 .env`),
    then generate the Flask secret with `python3 toolbox.py flask_secret`.
 2. Generate and store the administrator password hash with the toolbox. It
-   prompts without echoing the password and updates `.env`:
+   prompts without echoing the password, updates `.env`, builds the app image if
+   needed, and recreates the app container if it is already running:
 
    ```sh
    python3 toolbox.py admin_pwd
