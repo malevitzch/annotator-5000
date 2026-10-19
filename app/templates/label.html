@@ -11,6 +11,7 @@
         <div>
           <span class="muted">Signed in as {{ username }}</span>
           <a class="button-link" href="{{ url_for('tutorial') }}">Tutorial</a>
+          <a class="button-link" href="{{ url_for('leaderboard') }}">Leaderboard</a>
           <form action="{{ url_for('logout') }}" method="post" style="display:inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit">Sign out</button>

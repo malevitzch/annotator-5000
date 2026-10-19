@@ -157,6 +157,36 @@ def create_app(config=None):
 
         return render_template("tutorial.html", username=username)
 
+    @app.get("/leaderboard")
+    def leaderboard():
+        username = session.get("username")
+        if not username:
+            return redirect(url_for("index"))
+
+        backend = get_backend()
+        account = backend.conn.execute(
+            "SELECT 1 FROM users WHERE user = ?", (username,)
+        ).fetchone()
+        if not account:
+            session.clear()
+            return redirect(url_for("index"))
+
+        rankings = backend.conn.execute(
+            """
+            SELECT users.user, COUNT(annotations.user) AS annotation_count
+            FROM users
+            LEFT JOIN (
+                SELECT user FROM labels
+                UNION ALL
+                SELECT user FROM finalized_labels
+            ) AS annotations ON annotations.user = users.user
+            GROUP BY users.user
+            ORDER BY annotation_count DESC, users.user COLLATE NOCASE ASC
+            LIMIT 10
+            """
+        ).fetchall()
+        return render_template("leaderboard.html", username=username, rankings=rankings)
+
     def require_admin():
         username = session.get("username")
         if not username:
