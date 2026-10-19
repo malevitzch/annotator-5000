@@ -24,7 +24,7 @@
         Use keys 1-4 to select/unselect labels, press enter to submit.
         The labels are as follows:
         <ul>
-          <li>Edge of the splat - you can see edge of the scene and the void beyond it</li>
+          <li>Edge of the splat - you can see edge of the scene and the single-color background</li>
           <li>Visible gaussians - single gaussians are visible too well, best seen on examples</li>
           <li>Unrealistic blur - the image or a part of it is blurry (often due to a large gaussian)</li>
           <li>Doesn't resemble a photo in any way - self-explanatory, you just don't know what you're even looking at</li>
@@ -39,11 +39,37 @@
       <figure>
         <img
           src="{{ url_for('static', filename='examples/edge_of_splat.png') }}"
-          alt="A scene with empty space visible beyond its edge"
+          alt="a scene with empty space visible beyond its edge"
         >
         <figcaption>
-          This image is labeled as an edge of the splat because empty space is
-          clearly visible beyond the scene.
+          This image is labeled as an edge of the splat because the bottom left corner
+          of it shows the generic background and not just the model.
+        </figcaption>
+      </figure>
+      <figure>
+        <img
+          src="{{ url_for('static', filename='examples/full_splat.png') }}"
+          alt="a scene with empty space visible beyond its edge"
+        >
+        <figcaption>
+          This is an image of the full splat from far away. You can clearly see where the
+          model itself ends and where the background starts.
+          This would be a very clear case for edge of the splat label.
+        </figcaption>
+      </figure>
+      <figure>
+        <img
+          src="{{ url_for('static', filename='examples/nomedium.png') }}"
+          alt="a scene with empty space visible beyond its edge"
+        >
+        <figcaption>
+          This is the same scene as the previous image but with the medium removed so the
+          contrast between the background and the splat is better visible.
+          Everything that's black is the background which shouldn't probably be visible in a real photo.
+          There are exceptions to this, for example in a photo where the medium covers the void in a way
+          that's convincing, like when we are looking far and everything becomes less and less visible
+          the further away we look until we only see darkness (but if we removed medium, it would be clear
+          that there is some blackness behind it all).
         </figcaption>
       </figure>
     </article>
