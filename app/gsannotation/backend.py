@@ -156,7 +156,7 @@ class GSBackend:
         # - Edge of the world - does the photo capture the edge of the splat?
         # - Visible gaussians - does the image differ significantly from reality due to gaussians being too visible?
         # - Blur - is there unrealistic blur visible in the image?
-        # - Unreal - the image does not resemble a photo in any way (usually paired with "visible gaussians", but stronger)
+        # - Unreal - do you fail to imagine what the image was supposed to picture?
         image_set, image_id = image
         data = (image_set, image_id, user, *[label[i] for i in range(4)])
         self.conn.execute("INSERT INTO labels VALUES(?, ?, ?, ?, ?, ?, ?)", data)
