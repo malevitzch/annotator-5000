@@ -20,10 +20,18 @@
       </header>
     {% include "_progress.html" %}
     <p>Check every issue that applies, then submit to get another image.</p>
-      <p class="muted">Keyboard: 1-4 toggle issues; Enter submits.</p>
+      <p class="muted">Keyboard: 1-4 toggle issues; Enter submits; O/P decrease/increase brightness.</p>
       <figure class="label-image">
-        <img src="{{ url_for('image_file', image_set=image[0], image_id=image[1]) }}" alt="Image to annotate">
-        <figcaption class="muted">{{ image[0] }} / {{ image[1] }}</figcaption>
+        <div class="image-brightness-layout" id="image-brightness-layout">
+          <img id="annotation-image" src="{{ url_for('image_file', image_set=image[0], image_id=image[1]) }}" alt="Image to annotate; click to reset brightness">
+          <div class="brightness-control">
+            <label for="brightness-slider">Brightness</label>
+            <input id="brightness-slider" type="range" min="25" max="200" step="5" value="100" aria-label="Image brightness" aria-valuetext="100%">
+            <output id="brightness-value" for="brightness-slider">100%</output>
+            <button id="brightness-reset" type="button" aria-keyshortcuts="Home">Reset</button>
+          </div>
+        </div>
+        <figcaption class="muted">{{ image[0] }} / {{ image[1] }} · Scroll over image to adjust; click image to reset.</figcaption>
       </figure>
       <form id="label-form" action="{{ url_for('submit_label') }}" method="post">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -40,10 +48,35 @@
 </main>
 <script>
       const labelForm = document.getElementById("label-form");
+      const annotationImage = document.getElementById("annotation-image");
+      const brightnessSlider = document.getElementById("brightness-slider");
+      const brightnessValue = document.getElementById("brightness-value");
+      const brightnessReset = document.getElementById("brightness-reset");
+      const updateBrightness = (value) => {
+        brightnessSlider.value = String(Math.max(25, Math.min(200, value)));
+        const brightness = Number(brightnessSlider.value);
+        annotationImage.style.filter = `brightness(${brightness}%)`;
+        brightnessValue.value = `${brightness}%`;
+        brightnessSlider.setAttribute("aria-valuetext", `${brightness}%`);
+      };
+      const resetBrightness = () => updateBrightness(100);
+      brightnessSlider.addEventListener("input", () => updateBrightness(brightnessSlider.value));
+      brightnessReset.addEventListener("click", resetBrightness);
+      annotationImage.addEventListener("click", resetBrightness);
+      annotationImage.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        updateBrightness(Number(brightnessSlider.value) + (event.deltaY < 0 ? 5 : -5));
+      }, { passive: false });
       document.addEventListener("keydown", (event) => {
-        if (event.repeat || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+        const brightnessKey = event.key.toLowerCase() === "o" || event.key.toLowerCase() === "p";
+        if ((event.repeat && !brightnessKey) || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
         const target = event.target instanceof Element ? event.target : null;
         if (target && target.closest("input[type='text'], textarea, select, [contenteditable='true']")) return;
+        if (event.key.toLowerCase() === "o" || event.key.toLowerCase() === "p") {
+          event.preventDefault();
+          updateBrightness(Number(brightnessSlider.value) + (event.key.toLowerCase() === "p" ? 5 : -5));
+          return;
+        }
         if (/^[1-4]$/.test(event.key)) {
           const checkbox = document.getElementById("issue-" + event.key);
           if (checkbox) {

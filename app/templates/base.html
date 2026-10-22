@@ -31,7 +31,16 @@
     body.label-page .progress-section { margin: 0.5rem 0 0.75rem; }
     body.label-page main > p { margin: 0.35rem 0; }
     .label-image { margin: 0.5rem 0; }
-    .label-image img { display: block; max-width: 100%; max-height: 70vh; object-fit: contain; }
+    .image-brightness-layout { display: grid; grid-template-columns: minmax(0, 1fr) 3.5rem; align-items: center; gap: 0.75rem; }
+    .image-brightness-layout img { display: block; max-width: 100%; max-height: 70vh; object-fit: contain; cursor: pointer; }
+    .brightness-control { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+    .brightness-control input[type="range"] { writing-mode: vertical-lr; direction: rtl; height: min(45vh, 20rem); accent-color: #4a9b68; cursor: ns-resize; }
+    .brightness-control output { min-width: 3rem; text-align: center; }
+    .brightness-control button { padding: 0.35rem 0.5rem; }
+    @media (max-width: 520px) {
+      .image-brightness-layout { grid-template-columns: minmax(0, 1fr) 3rem; gap: 0.35rem; }
+      .brightness-control input[type="range"] { height: min(35vh, 14rem); }
+    }
     body.tutorial-page { width: fit-content; max-width: min(900px, calc(100vw - 2rem)); }
     body.tutorial-page main { width: 640px; max-width: 100%; }
     body.tutorial-page header { flex-wrap: wrap; }
