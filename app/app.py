@@ -1,5 +1,4 @@
 import os
-import sqlite3
 from pathlib import Path
 
 from flask import (
@@ -77,21 +76,9 @@ def create_app(config=None):
             database_path = Path(app.config["DATABASE_PATH"]).expanduser().resolve()
             database_path.parent.mkdir(parents=True, exist_ok=True)
             backend = GSBackend(str(database_path), str(image_root))
-            backend.conn.execute(
-                "UPDATE users SET is_admin = 0 WHERE is_admin = 1 AND user <> ?",
-                (app.config["ADMIN_USERNAME"],),
+            backend.configure_admin(
+                app.config["ADMIN_USERNAME"], app.config["ADMIN_PASSWORD_HASH"]
             )
-            backend.conn.execute(
-                """
-                INSERT INTO users (user, password_hash, is_admin)
-                VALUES (?, ?, 1)
-                ON CONFLICT(user) DO UPDATE SET
-                    password_hash = excluded.password_hash,
-                    is_admin = 1
-                """,
-                (app.config["ADMIN_USERNAME"], app.config["ADMIN_PASSWORD_HASH"]),
-            )
-            backend.conn.commit()
             g.backend = backend
         return g.backend
 
@@ -99,11 +86,11 @@ def create_app(config=None):
     def close_backend(_error=None):
         backend = g.pop("backend", None)
         if backend is not None:
-            backend.conn.close()
+            backend.close()
 
     @app.get("/healthz")
     def healthcheck():
-        get_backend().conn.execute("SELECT 1").fetchone()
+        get_backend().healthcheck()
         return {"status": "ok"}
 
     @app.get("/")
@@ -117,17 +104,7 @@ def create_app(config=None):
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "")
         backend = get_backend()
-        account = backend.conn.execute(
-            "SELECT password_hash FROM users WHERE user = ?", (username,)
-        ).fetchone()
-        valid_password = False
-        if account:
-            try:
-                valid_password = check_password_hash(account[0], password)
-            except (AttributeError, IndexError, TypeError, ValueError):
-                valid_password = False
-
-        if not valid_password:
+        if not backend.authenticate(username, password):
             flash("Invalid username or password.", "error")
             return redirect(url_for("index"))
 
@@ -146,12 +123,7 @@ def create_app(config=None):
         if not username:
             return redirect(url_for("index"))
 
-        account = (
-            get_backend()
-            .conn.execute("SELECT 1 FROM users WHERE user = ?", (username,))
-            .fetchone()
-        )
-        if not account:
+        if not get_backend().user_exists(username):
             session.clear()
             return redirect(url_for("index"))
 
@@ -164,27 +136,11 @@ def create_app(config=None):
             return redirect(url_for("index"))
 
         backend = get_backend()
-        account = backend.conn.execute(
-            "SELECT 1 FROM users WHERE user = ?", (username,)
-        ).fetchone()
-        if not account:
+        if not backend.user_exists(username):
             session.clear()
             return redirect(url_for("index"))
 
-        rankings = backend.conn.execute(
-            """
-            SELECT users.user, COUNT(annotations.user) AS annotation_count
-            FROM users
-            LEFT JOIN (
-                SELECT user FROM labels
-                UNION ALL
-                SELECT user FROM finalized_labels
-            ) AS annotations ON annotations.user = users.user
-            GROUP BY users.user
-            ORDER BY annotation_count DESC, users.user COLLATE NOCASE ASC
-            LIMIT 10
-            """
-        ).fetchall()
+        rankings = backend.leaderboard()
         return render_template("leaderboard.html", username=username, rankings=rankings)
 
     def require_admin():
@@ -193,13 +149,11 @@ def create_app(config=None):
             return redirect(url_for("index"))
 
         backend = get_backend()
-        account = backend.conn.execute(
-            "SELECT is_admin FROM users WHERE user = ?", (username,)
-        ).fetchone()
-        if not account:
+        is_admin = backend.is_admin(username)
+        if is_admin is None:
             session.clear()
             return redirect(url_for("index"))
-        if not account[0]:
+        if not is_admin:
             abort(403)
         return None
 
@@ -223,23 +177,13 @@ def create_app(config=None):
             elif len(password) < 12:
                 flash("Passwords must be at least 12 characters long.", "error")
             else:
-                existing = backend.conn.execute(
-                    "SELECT 1 FROM users WHERE user = ?", (username,)
-                ).fetchone()
-                if existing:
-                    flash("That username already exists.", "error")
-                else:
-                    backend.conn.execute(
-                        "INSERT INTO users (user, password_hash, is_admin) VALUES (?, ?, 0)",
-                        (username, generate_password_hash(password)),
-                    )
-                    backend.conn.commit()
+                if backend.create_user(username, generate_password_hash(password)):
                     flash(f"Account created for {username}.", "success")
+                else:
+                    flash("That username already exists.", "error")
             return redirect(url_for("admin_accounts"))
 
-        users = backend.conn.execute(
-            "SELECT user, is_admin, password_hash IS NOT NULL FROM users ORDER BY user"
-        ).fetchall()
+        users = backend.users()
         return render_template(
             "admin_accounts.html",
             users=users,
@@ -264,12 +208,7 @@ def create_app(config=None):
             )
         else:
             backend = get_backend()
-            result = backend.conn.execute(
-                "UPDATE users SET password_hash = ? WHERE user = ?",
-                (generate_password_hash(password), username),
-            )
-            if result.rowcount:
-                backend.conn.commit()
+            if backend.set_password(username, generate_password_hash(password)):
                 flash(f"Password updated for {username}.", "success")
             else:
                 flash("That account does not exist.", "error")
@@ -282,10 +221,8 @@ def create_app(config=None):
             return redirect(url_for("index"))
 
         backend = get_backend()
-        account = backend.conn.execute(
-            "SELECT is_admin FROM users WHERE user = ?", (username,)
-        ).fetchone()
-        if not account:
+        is_admin = backend.is_admin(username)
+        if is_admin is None:
             session.clear()
             return redirect(url_for("index"))
 
@@ -305,7 +242,7 @@ def create_app(config=None):
             return render_template(
                 "done.html",
                 username=username,
-                is_admin=bool(account[0]),
+                is_admin=is_admin,
                 progress=progress,
             )
 
@@ -315,7 +252,7 @@ def create_app(config=None):
             username=username,
             image=current_image,
             labels=LABELS,
-            is_admin=bool(account[0]),
+            is_admin=is_admin,
             progress=progress,
         )
 
@@ -336,9 +273,7 @@ def create_app(config=None):
             return redirect(url_for("label_image"))
 
         values = [int(name in request.form) for name, _description in LABELS]
-        try:
-            backend.new_annotation(image, values, username)
-        except sqlite3.IntegrityError:
+        if not backend.new_annotation(image, values, username):
             session.pop("current_image", None)
             flash("This image was already labeled by this user.", "error")
             return redirect(url_for("label_image"))

@@ -1,8 +1,102 @@
+import sqlite3
 from pathlib import Path
 from random import choice
 
+from werkzeug.security import check_password_hash
+
 
 class GSBackend:
+    def close(self):
+        self.conn.close()
+
+    def configure_admin(self, username, password_hash):
+        self.conn.execute(
+            "UPDATE users SET is_admin = 0 WHERE is_admin = 1 AND user <> ?",
+            (username,),
+        )
+        self.conn.execute(
+            """
+            INSERT INTO users (user, password_hash, is_admin)
+            VALUES (?, ?, 1)
+            ON CONFLICT(user) DO UPDATE SET
+                password_hash = excluded.password_hash,
+                is_admin = 1
+            """,
+            (username, password_hash),
+        )
+        self.conn.commit()
+
+    def healthcheck(self):
+        self.conn.execute("SELECT 1").fetchone()
+
+    def authenticate(self, username, password):
+        account = self.conn.execute(
+            "SELECT password_hash FROM users WHERE user = ?", (username,)
+        ).fetchone()
+        if not account:
+            return False
+        try:
+            return check_password_hash(account[0], password)
+        except (AttributeError, IndexError, TypeError, ValueError):
+            return False
+
+    def user_exists(self, username):
+        return (
+            self.conn.execute(
+                "SELECT 1 FROM users WHERE user = ?", (username,)
+            ).fetchone()
+            is not None
+        )
+
+    def is_admin(self, username):
+        account = self.conn.execute(
+            "SELECT is_admin FROM users WHERE user = ?", (username,)
+        ).fetchone()
+        return None if account is None else bool(account[0])
+
+    def leaderboard(self):
+        return self.conn.execute(
+            """
+            SELECT users.user, COUNT(annotations.user) AS annotation_count
+            FROM users
+            LEFT JOIN (
+                SELECT user FROM labels
+                UNION ALL
+                SELECT user FROM finalized_labels
+            ) AS annotations ON annotations.user = users.user
+            GROUP BY users.user
+            ORDER BY annotation_count DESC, users.user COLLATE NOCASE ASC
+            LIMIT 10
+            """
+        ).fetchall()
+
+    def create_user(self, username, password_hash):
+        try:
+            self.conn.execute(
+                "INSERT INTO users (user, password_hash, is_admin) VALUES (?, ?, 0)",
+                (username, password_hash),
+            )
+        except sqlite3.IntegrityError:
+            self.conn.rollback()
+            return False
+        self.conn.commit()
+        return True
+
+    def users(self):
+        return self.conn.execute(
+            "SELECT user, is_admin, password_hash IS NOT NULL FROM users ORDER BY user"
+        ).fetchall()
+
+    def set_password(self, username, password_hash):
+        result = self.conn.execute(
+            "UPDATE users SET password_hash = ? WHERE user = ?",
+            (password_hash, username),
+        )
+        if not result.rowcount:
+            return False
+        self.conn.commit()
+        return True
+
     def _ensure_tables_exist(self):
 
         for table in ["labels", "finalized_labels"]:
@@ -139,8 +233,6 @@ class GSBackend:
         return choice(eligible) if eligible else None
 
     def __init__(self, db_path, images_path):
-        import sqlite3
-
         self.images_path = images_path
         self.conn = sqlite3.connect(db_path, timeout=30)
         self.cursor = self.conn.cursor()
@@ -159,7 +251,11 @@ class GSBackend:
         # - Unreal - do you fail to imagine what the image was supposed to picture?
         image_set, image_id = image
         data = (image_set, image_id, user, *[label[i] for i in range(4)])
-        self.conn.execute("INSERT INTO labels VALUES(?, ?, ?, ?, ?, ?, ?)", data)
+        try:
+            self.conn.execute("INSERT INTO labels VALUES(?, ?, ?, ?, ?, ?, ?)", data)
+        except sqlite3.IntegrityError:
+            self.conn.rollback()
+            return False
 
         count = self.conn.execute(
             """
@@ -189,3 +285,4 @@ class GSBackend:
                 (image_set, image_id),
             )
         self.conn.commit()
+        return True
