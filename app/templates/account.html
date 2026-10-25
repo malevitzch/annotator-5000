@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Account{% endblock %}
+{% block body %}
+<main>
+  <header>
+    <div>
+      <h1>Account</h1>
+      <a href="{{ url_for('label_image') }}">Back to labeling</a>
+    </div>
+    <div>
+      <a class="button-link" href="{{ url_for('tutorial') }}">Tutorial</a>
+      <a class="button-link" href="{{ url_for('leaderboard') }}">Leaderboard</a>
+      <form action="{{ url_for('logout') }}" method="post" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit">Sign out</button>
+      </form>
+    </div>
+  </header>
+
+  <p>Signed in as <strong>{{ username }}</strong>.</p>
+  {% if is_admin %}
+  <p class="muted">The administrator password is managed by the server configuration.</p>
+  {% else %}
+  <h2>Change password</h2>
+  <form action="{{ url_for('account') }}" method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <p>
+      <label for="current-password">Current password</label><br>
+      <input id="current-password" name="current_password" type="password" autocomplete="current-password" required>
+    </p>
+    <p>
+      <label for="new-password">New password (at least 12 characters)</label><br>
+      <input id="new-password" name="password" type="password" minlength="12" autocomplete="new-password" required>
+    </p>
+    <p>
+      <label for="password-confirmation">Confirm new password</label><br>
+      <input id="password-confirmation" name="password_confirmation" type="password" minlength="12" autocomplete="new-password" required>
+    </p>
+    <button type="submit">Change password</button>
+  </form>
+  {% endif %}
+</main>
+{% endblock %}

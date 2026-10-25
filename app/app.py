@@ -117,6 +117,41 @@ def create_app(config=None):
         session.clear()
         return redirect(url_for("index"))
 
+    @app.route("/account", methods=["GET", "POST"])
+    def account():
+        username = session.get("username")
+        if not username:
+            return redirect(url_for("index"))
+
+        backend = get_backend()
+        if not backend.user_exists(username):
+            session.clear()
+            return redirect(url_for("index"))
+
+        is_admin = backend.is_admin(username)
+        if request.method == "POST":
+            current_password = request.form.get("current_password", "")
+            password = request.form.get("password", "")
+            confirmation = request.form.get("password_confirmation", "")
+
+            if is_admin:
+                flash(
+                    "The configured administrator password is managed by the server.",
+                    "error",
+                )
+            elif not backend.authenticate(username, current_password):
+                flash("Your current password is incorrect.", "error")
+            elif len(password) < 12:
+                flash("Passwords must be at least 12 characters long.", "error")
+            elif password != confirmation:
+                flash("New passwords do not match.", "error")
+            else:
+                backend.set_password(username, generate_password_hash(password))
+                flash("Password updated.", "success")
+            return redirect(url_for("account"))
+
+        return render_template("account.html", username=username, is_admin=is_admin)
+
     @app.get("/tutorial")
     def tutorial():
         username = session.get("username")
@@ -186,6 +221,7 @@ def create_app(config=None):
         users = backend.users()
         return render_template(
             "admin_accounts.html",
+            username=session["username"],
             users=users,
             configured_admin=app.config["ADMIN_USERNAME"],
             progress=backend.progress(),
