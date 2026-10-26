@@ -37,7 +37,7 @@ From the project root on the VPS:
 2. Generate and store the administrator password hash with the toolbox. It will automatically 
    replace the value in `.env`:
    ```sh
-   python3 toolbox.py admin_pwd
+   python3 toolbox.py admin-pwd
    ```
 3. Ensure `images/` contains the image sets you want to annotate. The toolbox
    creates missing `images/` and `data/` mount directories if needed, but you should
@@ -53,8 +53,8 @@ From the project root on the VPS:
 Run these from the project root:
 
 ```sh
-python3 toolbox.py flask_secret
-python3 toolbox.py admin_pwd
+python3 toolbox.py flask-secret
+python3 toolbox.py admin-pwd
 python3 toolbox.py stop
 python3 toolbox.py reload
 python3 toolbox.py discover-images

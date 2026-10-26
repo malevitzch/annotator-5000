@@ -350,8 +350,8 @@ def main():
         description="Manage the annotator Compose deployment."
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
-    subparsers.add_parser("admin_pwd", help="Set a new administrator password hash")
-    subparsers.add_parser("flask_secret", help="Generate and save FLASK_SECRET_KEY")
+    subparsers.add_parser("admin-pwd", help="Set a new administrator password hash")
+    subparsers.add_parser("flask-secret", help="Generate and save FLASK_SECRET_KEY")
     subparsers.add_parser("build", help="Build the application image")
     subparsers.add_parser("run", help="Discover images and start the services")
     subparsers.add_parser("stop", help="Gracefully stop the Compose services")
@@ -372,8 +372,8 @@ def main():
     args = parser.parse_args()
 
     commands = {
-        "admin_pwd": admin_pwd,
-        "flask_secret": flask_secret,
+        "admin-pwd": admin_pwd,
+        "flask-secret": flask_secret,
         "build": build,
         "run": run,
         "stop": stop,
