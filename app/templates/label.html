@@ -26,7 +26,7 @@
           <img id="annotation-image" src="{{ url_for('image_file', image_set=image[0], image_id=image[1]) }}" alt="Image to annotate; click to reset brightness">
           <div class="brightness-control">
             <label for="brightness-slider">Brightness</label>
-            <input id="brightness-slider" type="range" min="25" max="200" step="5" value="100" aria-label="Image brightness" aria-valuetext="100%">
+            <input id="brightness-slider" type="range" min="25" max="500" step="5" value="100" aria-label="Image brightness" aria-valuetext="100%">
             <output id="brightness-value" for="brightness-slider">100%</output>
             <button id="brightness-reset" type="button" aria-keyshortcuts="Home">Reset</button>
           </div>
@@ -53,7 +53,7 @@
       const brightnessValue = document.getElementById("brightness-value");
       const brightnessReset = document.getElementById("brightness-reset");
       const updateBrightness = (value) => {
-        brightnessSlider.value = String(Math.max(25, Math.min(200, value)));
+        brightnessSlider.value = String(Math.max(25, Math.min(500, value)));
         const brightness = Number(brightnessSlider.value);
         annotationImage.style.filter = `brightness(${brightness}%)`;
         brightnessValue.value = `${brightness}%`;
