@@ -20,7 +20,7 @@
       </header>
     {% include "_progress.html" %}
     <p>Check every issue that applies, then submit to get another image.</p>
-      <p class="muted">Keyboard: 1-4 toggle issues; Enter submits; O/P decrease/increase brightness.</p>
+      <p class="muted">Keyboard: 1-4 toggle issues; Enter submits; S skips; O/P decrease/increase brightness.</p>
       <figure class="label-image">
         <div class="image-brightness-layout" id="image-brightness-layout">
           <img id="annotation-image" src="{{ url_for('image_file', image_set=image[0], image_id=image[1]) }}" alt="Image to annotate; click to reset brightness">
@@ -44,6 +44,7 @@
         </div>
         {% endfor %}
         <button type="submit" aria-keyshortcuts="Enter">Submit and continue</button>
+        <button id="skip-button" type="submit" formaction="{{ url_for('skip_label') }}" aria-keyshortcuts="S">Skip</button>
       </form>
 </main>
 <script>
@@ -84,6 +85,11 @@
             checkbox.checked = !checkbox.checked;
             checkbox.focus({ preventScroll: true });
           }
+          return;
+        }
+        if (event.key.toLowerCase() === "s") {
+          event.preventDefault();
+          labelForm.requestSubmit(document.getElementById("skip-button"));
           return;
         }
         if (event.key === "Enter") {

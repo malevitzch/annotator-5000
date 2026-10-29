@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from random import choice
 
 from flask import (
     Flask,
@@ -291,6 +292,23 @@ def create_app(config=None):
             is_admin=is_admin,
             progress=progress,
         )
+
+    @app.post("/label/skip")
+    def skip_label():
+        username = session.get("username")
+        if not username:
+            return redirect(url_for("index"))
+
+        current_image = tuple(session.get("current_image", ()))
+        eligible = get_backend().eligible_images(username)
+        alternatives = [image for image in eligible if image != current_image]
+        if alternatives:
+            session["current_image"] = list(choice(alternatives))
+        elif current_image not in eligible:
+            session.pop("current_image", None)
+        else:
+            flash("There are no other images available right now.", "error")
+        return redirect(url_for("label_image"))
 
     @app.post("/label")
     def submit_label():
