@@ -267,13 +267,19 @@ def export_csv(args):
     require_env_file()
     ensure_app_image()
     ensure_mount_directories()
+    if args.session == "binary":
+        header = ["set", "id", "user", "training_suitable"]
+        query = "SELECT image_set, image_id, user, label FROM binary_labels ORDER BY image_set, image_id"
+    else:
+        header = ["set", "id", "edge_fraction", "visgauss_fraction", "blur_fraction", "unreal_fraction"]
+        query = "SELECT image_set, image_id, AVG(edge), AVG(visgauss), AVG(blur), AVG(unreal) FROM finalized_labels GROUP BY image_set, image_id HAVING COUNT(DISTINCT user) = 3 ORDER BY image_set, image_id"
     script = (
         "import base64, csv, io, sqlite3\n"
         "connection = sqlite3.connect('file:/data/annotations.sqlite3?mode=ro', uri=True)\n"
         "output = io.StringIO(newline='')\n"
         "writer = csv.writer(output, lineterminator='\\n')\n"
-        "writer.writerow(['set', 'id', 'edge_fraction', 'visgauss_fraction', 'blur_fraction', 'unreal_fraction'])\n"
-        "writer.writerows(connection.execute('''SELECT image_set, image_id, AVG(edge), AVG(visgauss), AVG(blur), AVG(unreal) FROM finalized_labels GROUP BY image_set, image_id HAVING COUNT(DISTINCT user) = 3 ORDER BY image_set, image_id'''))\n"
+        f"writer.writerow({header!r})\n"
+        f"writer.writerows(connection.execute({query!r}))\n"
         "print('TOOLBOX_CSV=' + base64.b64encode(output.getvalue().encode('utf-8')).decode('ascii'))\n"
         "connection.close()"
     )
@@ -360,6 +366,8 @@ def main():
     export_parser = subparsers.add_parser(
         "export-csv", help="Export finalized annotation fractions as CSV"
     )
+    export_parser.add_argument("--session", choices=["binary", "legacy"], default="legacy",
+                               help="labeling session to export (default: legacy)")
     export_parser.add_argument(
         "--output",
         "-o",

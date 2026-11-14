@@ -63,6 +63,8 @@ class GSBackend:
                 SELECT user FROM labels
                 UNION ALL
                 SELECT user FROM finalized_labels
+                UNION ALL
+                SELECT user FROM binary_labels
             ) AS annotations ON annotations.user = users.user
             GROUP BY users.user
             ORDER BY annotation_count DESC, users.user COLLATE NOCASE ASC
@@ -97,7 +99,58 @@ class GSBackend:
         self.conn.commit()
         return True
 
+    def binary_progress(self):
+        completed = set(self.conn.execute(
+            "SELECT image_set, image_id FROM binary_labels"
+        ).fetchall())
+        return {"completed": len(completed.intersection(self.imgs)),
+                "required": len(self.imgs)}
+
+    def binary_eligible_images(self, user):
+        completed = set(self.conn.execute(
+            "SELECT image_set, image_id FROM binary_labels"
+        ).fetchall())
+        return [image for image in self.imgs if image not in completed]
+
+    def new_binary_annotation(self, image, label, user):
+        if label not in (0, 0.5, 1) or image not in self.imgs:
+            return False
+        try:
+            self.conn.execute(
+                "INSERT INTO binary_labels (image_set, image_id, user, label) VALUES (?, ?, ?, ?)",
+                (*image, user, label),
+            )
+        except sqlite3.IntegrityError:
+            self.conn.rollback()
+            return False
+        self.conn.commit()
+        return True
+
     def _ensure_tables_exist(self):
+        binary_schema = """
+            CREATE TABLE IF NOT EXISTS binary_labels (
+                image_set TEXT NOT NULL,
+                image_id TEXT NOT NULL,
+                user TEXT NOT NULL,
+                label REAL NOT NULL CHECK (label IN (0, 0.5, 1)),
+                PRIMARY KEY (image_set, image_id)
+            )
+        """
+        self.conn.execute(binary_schema)
+        columns = self.conn.execute("PRAGMA table_info(binary_labels)").fetchall()
+        if any(column[1] == "label" and column[2] == "INTEGER" for column in columns):
+            # Rebuild the original table to widen its CHECK constraint atomically.
+            with self.conn:
+                self.conn.execute("BEGIN IMMEDIATE")
+                columns = self.conn.execute("PRAGMA table_info(binary_labels)").fetchall()
+                if any(column[1] == "label" and column[2] == "INTEGER" for column in columns):
+                    self.conn.execute("ALTER TABLE binary_labels RENAME TO binary_labels_old")
+                    self.conn.execute(binary_schema)
+                    self.conn.execute("""
+                        INSERT INTO binary_labels (image_set, image_id, user, label)
+                        SELECT image_set, image_id, user, label FROM binary_labels_old
+                    """)
+                    self.conn.execute("DROP TABLE binary_labels_old")
 
         for table in ["labels", "finalized_labels"]:
             self.conn.execute(

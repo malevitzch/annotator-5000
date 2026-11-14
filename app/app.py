@@ -225,7 +225,7 @@ def create_app(config=None):
             username=session["username"],
             users=users,
             configured_admin=app.config["ADMIN_USERNAME"],
-            progress=backend.progress(),
+            progress=backend.binary_progress(),
         )
 
     @app.post("/admin/accounts/password")
@@ -251,8 +251,11 @@ def create_app(config=None):
                 flash("That account does not exist.", "error")
         return redirect(url_for("admin_accounts"))
 
-    @app.get("/label")
-    def label_image():
+    @app.get("/label/legacy", defaults={"labeling_session": "legacy"})
+    @app.get("/label", defaults={"labeling_session": "binary"})
+    def label_image(labeling_session):
+        binary = labeling_session == "binary"
+        image_key = "binary_current_image" if binary else "current_image"
         username = session.get("username")
         if not username:
             return redirect(url_for("index"))
@@ -263,27 +266,29 @@ def create_app(config=None):
             session.clear()
             return redirect(url_for("index"))
 
-        progress = backend.progress()
-        current_image = session.get("current_image")
+        progress = backend.binary_progress() if binary else backend.progress()
+        current_image = session.get(image_key)
         if current_image is not None:
             current_image = tuple(current_image)
-            if current_image not in backend.eligible_images(username):
-                session.pop("current_image", None)
+            if current_image not in (backend.binary_eligible_images(username) if binary else backend.eligible_images(username)):
+                session.pop(image_key, None)
                 current_image = None
 
         if current_image is None:
-            current_image = backend.random_image(username)
+            eligible = backend.binary_eligible_images(username) if binary else backend.eligible_images(username)
+            current_image = choice(eligible) if eligible else None
 
         if current_image is None:
-            session.pop("current_image", None)
+            session.pop(image_key, None)
             return render_template(
                 "done.html",
                 username=username,
                 is_admin=is_admin,
                 progress=progress,
+                labeling_session=labeling_session,
             )
 
-        session["current_image"] = list(current_image)
+        session[image_key] = list(current_image)
         return render_template(
             "label.html",
             username=username,
@@ -291,49 +296,64 @@ def create_app(config=None):
             labels=LABELS,
             is_admin=is_admin,
             progress=progress,
+            labeling_session=labeling_session,
         )
 
-    @app.post("/label/skip")
-    def skip_label():
+    @app.post("/label/legacy/skip", defaults={"labeling_session": "legacy"})
+    @app.post("/label/skip", defaults={"labeling_session": "binary"})
+    def skip_label(labeling_session):
+        binary = labeling_session == "binary"
+        image_key = "binary_current_image" if binary else "current_image"
         username = session.get("username")
         if not username:
             return redirect(url_for("index"))
 
-        current_image = tuple(session.get("current_image", ()))
-        eligible = get_backend().eligible_images(username)
+        current_image = tuple(session.get(image_key, ()))
+        eligible = (get_backend().binary_eligible_images(username) if binary else get_backend().eligible_images(username))
         alternatives = [image for image in eligible if image != current_image]
         if alternatives:
-            session["current_image"] = list(choice(alternatives))
+            session[image_key] = list(choice(alternatives))
         elif current_image not in eligible:
-            session.pop("current_image", None)
+            session.pop(image_key, None)
         else:
             flash("There are no other images available right now.", "error")
-        return redirect(url_for("label_image"))
+        return redirect(url_for("label_image", labeling_session=labeling_session))
 
-    @app.post("/label")
-    def submit_label():
+    @app.post("/label/legacy", defaults={"labeling_session": "legacy"})
+    @app.post("/label", defaults={"labeling_session": "binary"})
+    def submit_label(labeling_session):
+        binary = labeling_session == "binary"
+        image_key = "binary_current_image" if binary else "current_image"
         username = session.get("username")
-        current_image = session.get("current_image")
+        current_image = session.get(image_key)
         if not username or not current_image:
             return redirect(url_for("index"))
 
         backend = get_backend()
         image = tuple(current_image)
-        if image not in backend.eligible_images(username):
-            session.pop("current_image", None)
+        if image not in (backend.binary_eligible_images(username) if binary else backend.eligible_images(username)):
+            session.pop(image_key, None)
             flash(
                 "That image is no longer available. Please label another one.", "error"
             )
-            return redirect(url_for("label_image"))
+            return redirect(url_for("label_image", labeling_session=labeling_session))
 
-        values = [int(name in request.form) for name, _description in LABELS]
-        if not backend.new_annotation(image, values, username):
-            session.pop("current_image", None)
+        if binary:
+            answer = request.form.get("answer")
+            answers = {"yes": 1, "no": 0, "ambiguous": 0.5}
+            if answer not in answers:
+                abort(400)
+            saved = backend.new_binary_annotation(image, answers[answer], username)
+        else:
+            values = [int(name in request.form) for name, _description in LABELS]
+            saved = backend.new_annotation(image, values, username)
+        if not saved:
+            session.pop(image_key, None)
             flash("This image was already labeled by this user.", "error")
-            return redirect(url_for("label_image"))
+            return redirect(url_for("label_image", labeling_session=labeling_session))
 
-        session.pop("current_image", None)
-        return redirect(url_for("label_image"))
+        session.pop(image_key, None)
+        return redirect(url_for("label_image", labeling_session=labeling_session))
 
     @app.get("/images/<image_set>/<image_id>")
     def image_file(image_set, image_id):

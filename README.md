@@ -2,6 +2,21 @@
 
 Software to coordinate image annotation.
 
+The default labeling session at `/label` asks **“Is this image good enough to
+be used for training?”** Choose Yes (Y), No (N), Ambiguous (A), or Skip (S).
+Yes/No/Ambiguous save 1/0/0.5;
+skipping saves nothing and leaves the image available for later. Each image needs
+one answer from the team, with no three-annotator requirement.
+
+The **Original issue labels** link opens `/label/legacy`, preserving the original
+four-issue workflow and its three-annotator requirement. Both sessions use the
+same images and accounts, with independent labels, progress, and current images.
+Existing annotations are preserved automatically when the app starts.
+
+Export training suitability answers with `python3 toolbox.py export-csv --session binary --output binary.csv`.
+The CSV contains `set,id,user,training_suitable`. The existing export defaults to
+the original session (`--session legacy`). The leaderboard counts both sessions.
+
 ## Production deployment on a Linux VPS
 
 This Compose setup runs the Flask app under Gunicorn behind Caddy. Caddy

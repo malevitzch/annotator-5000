@@ -1,0 +1,4 @@
+<nav aria-label="Labeling sessions" style="margin:0.75rem 0">
+  {% if labeling_session == 'binary' %}<strong>Training suitability</strong>{% else %}<a href="{{ url_for('label_image') }}">Training suitability</a>{% endif %}
+  · {% if labeling_session == 'legacy' %}<strong>Original issue labels</strong>{% else %}<a href="{{ url_for('label_image', labeling_session='legacy') }}">Original issue labels</a>{% endif %}
+</nav>
