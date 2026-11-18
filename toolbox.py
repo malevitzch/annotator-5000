@@ -268,8 +268,8 @@ def export_csv(args):
     ensure_app_image()
     ensure_mount_directories()
     if args.session == "binary":
-        header = ["set", "id", "user", "training_suitable"]
-        query = "SELECT image_set, image_id, user, label FROM binary_labels ORDER BY image_set, image_id"
+        header = ["set", "id", "training_suitable"]
+        query = "SELECT image_set, image_id, label FROM binary_labels ORDER BY image_set, image_id"
     else:
         header = ["set", "id", "edge_fraction", "visgauss_fraction", "blur_fraction", "unreal_fraction"]
         query = "SELECT image_set, image_id, AVG(edge), AVG(visgauss), AVG(blur), AVG(unreal) FROM finalized_labels GROUP BY image_set, image_id HAVING COUNT(DISTINCT user) = 3 ORDER BY image_set, image_id"

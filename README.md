@@ -14,7 +14,7 @@ same images and accounts, with independent labels, progress, and current images.
 Existing annotations are preserved automatically when the app starts.
 
 Export training suitability answers with `python3 toolbox.py export-csv --session binary --output binary.csv`.
-The CSV contains `set,id,user,training_suitable`. The existing export defaults to
+The CSV contains `set,id,training_suitable`. The existing export defaults to
 the original session (`--session legacy`). The leaderboard counts both sessions.
 
 ## Production deployment on a Linux VPS
